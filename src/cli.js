@@ -58,21 +58,54 @@ if (!token) {
     console.log(`   "${info.title}"`);
     if (info.tags.length) console.log(`   Tags: ${info.tags.join(', ')}`);
 
-    // 2. Convert to markdown
+    // 2. Fetch image URLs directly from blocks API
+    console.log('🖼️  Fetching images...');
+    const imageMap = await notion.getImageUrls(pageId);
+    const imagesWithUrls = [...imageMap.values()].filter((v) => v.url);
+    const imagesWithoutUrls = [...imageMap.values()].filter((v) => !v.url);
+
+    if (imageMap.size > 0) {
+      console.log(`   Found ${imageMap.size} image(s)`);
+      if (imagesWithUrls.length > 0)
+        console.log(`   ✓ ${imagesWithUrls.length} with URLs`);
+      if (imagesWithoutUrls.length > 0)
+        console.log(
+          `   ⚠ ${imagesWithoutUrls.length} missing URLs (check integration "Files & media" capability)`
+        );
+    }
+
+    // 3. Convert to markdown
     console.log('⚙️  Converting...');
     let markdown = await notion.getPageMarkdown(pageId);
 
-    // 3. Download images locally (Notion URLs expire in ~1 hour)
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-    markdown = await downloadAndReplaceImages(markdown, outputDir);
+    // 4. Inject real image URLs into markdown
+    //    notion-to-md produces ![alt]() with empty URLs when API doesn't return them
+    //    If we have URLs from the blocks API, inject them sequentially
+    if (imagesWithUrls.length > 0) {
+      let urlIndex = 0;
+      markdown = markdown.replace(
+        /!\[([^\]]*)\]\(([^)]*)\)/g,
+        (match, alt, url) => {
+          // If URL is empty or missing, inject from our image map
+          if (!url || url.trim() === '') {
+            if (urlIndex < imagesWithUrls.length) {
+              const img = imagesWithUrls[urlIndex++];
+              const caption = alt || img.caption || 'image';
+              return `![${caption}](${img.url})`;
+            }
+          }
+          return match;
+        }
+      );
+    }
 
-    // 4. Convert to Medium HTML
+    // 5. Convert to Medium HTML
     const html = converter.convert(markdown);
     const wordCount = converter.getWordCount(html);
     const readTime = Math.max(1, Math.ceil(wordCount / 265));
     console.log(`   ${wordCount} words · ${readTime} min read`);
 
-    // 5. Build preview
+    // 7. Build preview
     const previewHtml = buildPreviewHtml({
       title: info.title,
       content: html,
@@ -81,16 +114,19 @@ if (!token) {
       notionUrl: info.url,
     });
 
-    // 6. Save
+    // 8. Save
     const slug = info.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
       .slice(0, 80);
+    
+    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+    
     const filepath = path.join(outputDir, `${slug}.html`);
     fs.writeFileSync(filepath, previewHtml, 'utf-8');
 
-    // 7. Open in browser
+    // 9. Open in browser
     try {
       execSync(`open "${filepath}"`);
     } catch {}
@@ -100,10 +136,14 @@ if (!token) {
   } catch (err) {
     console.error(`\n❌ ${err.message}`);
     if (err.code === 'unauthorized' || err.status === 401) {
-      console.error('   Check your NOTION_TOKEN and ensure the page is shared with your integration.');
+      console.error(
+        '   Check your NOTION_TOKEN and ensure the page is shared with your integration.'
+      );
     }
     if (err.code === 'object_not_found' || err.status === 404) {
-      console.error('   Page not found. Check the page ID and ensure it\'s shared with your integration.');
+      console.error(
+        "   Page not found. Check the page ID and ensure it's shared with your integration."
+      );
     }
     process.exit(1);
   }
