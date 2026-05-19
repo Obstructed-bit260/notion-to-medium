@@ -1,0 +1,21 @@
+{
+  "name": "notion-to-medium",
+  "version": "1.0.0",
+  "description": "Convert Notion pages to Medium-ready HTML for easy copy-paste publishing",
+  "main": "src/cli.js",
+  "bin": {
+    "notion-to-medium": "src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "export": "node src/cli.js export",
+    "batch": "node src/cli.js batch"
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "commander": "^11.1.0",
+    "dotenv": "^16.4.5",
+    "marked": "^9.1.6",
+    "notion-to-md": "^3.1.1"
+  }
+}
