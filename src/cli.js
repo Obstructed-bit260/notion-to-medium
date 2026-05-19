@@ -8,6 +8,7 @@ const { execSync } = require('child_process');
 const { NotionClient } = require('./notion');
 const { NotionToMediumConverter } = require('./converter');
 const { buildPreviewHtml } = require('./template');
+const { downloadAndReplaceImages } = require('./images');
 
 // ── Get page ID from args ──
 
@@ -59,15 +60,19 @@ if (!token) {
 
     // 2. Convert to markdown
     console.log('⚙️  Converting...');
-    const markdown = await notion.getPageMarkdown(pageId);
+    let markdown = await notion.getPageMarkdown(pageId);
 
-    // 3. Convert to Medium HTML
+    // 3. Download images locally (Notion URLs expire in ~1 hour)
+    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+    markdown = await downloadAndReplaceImages(markdown, outputDir);
+
+    // 4. Convert to Medium HTML
     const html = converter.convert(markdown);
     const wordCount = converter.getWordCount(html);
     const readTime = Math.max(1, Math.ceil(wordCount / 265));
     console.log(`   ${wordCount} words · ${readTime} min read`);
 
-    // 4. Build preview
+    // 5. Build preview
     const previewHtml = buildPreviewHtml({
       title: info.title,
       content: html,
@@ -76,17 +81,16 @@ if (!token) {
       notionUrl: info.url,
     });
 
-    // 5. Save
+    // 6. Save
     const slug = info.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
       .slice(0, 80);
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
     const filepath = path.join(outputDir, `${slug}.html`);
     fs.writeFileSync(filepath, previewHtml, 'utf-8');
 
-    // 6. Open in browser
+    // 7. Open in browser
     try {
       execSync(`open "${filepath}"`);
     } catch {}
