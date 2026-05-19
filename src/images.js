@@ -1,73 +1,60 @@
 const fs = require('fs');
-const path = require('path');
 const https = require('https');
 const http = require('http');
-const crypto = require('crypto');
 
 /**
- * Download all images found in markdown, save locally, and rewrite URLs.
- * This fixes Notion's temporary signed S3 URLs that expire after ~1 hour.
+ * Download all images found in markdown and embed them as base64 Data URIs.
+ * This fixes Notion's expiring URLs and ensures Medium can process the images
+ * when the HTML is copy-pasted (Medium accepts base64 images and auto-uploads them).
  */
-async function downloadAndReplaceImages(markdown, outputDir) {
-  const imgDir = path.join(outputDir, 'images');
-  if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
-
+async function downloadAndReplaceImages(markdown) {
   // Match both markdown images ![alt](url) and raw <img src="url"> tags
   const mdImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
   const htmlImageRegex = /<img\s+[^>]*src="([^"]+)"[^>]*>/g;
 
   // Collect all unique image URLs
-  const images = new Map(); // url → local filename
+  const images = new Set();
   let match;
 
   while ((match = mdImageRegex.exec(markdown)) !== null) {
     const url = match[2].trim();
-    if (!images.has(url) && url.startsWith('http')) {
-      const ext = guessExtension(url);
-      const hash = crypto.createHash('md5').update(url).digest('hex').slice(0, 10);
-      images.set(url, `img-${hash}${ext}`);
-    }
+    if (url.startsWith('http')) images.add(url);
   }
 
   while ((match = htmlImageRegex.exec(markdown)) !== null) {
     const url = match[1].trim();
-    if (!images.has(url) && url.startsWith('http')) {
-      const ext = guessExtension(url);
-      const hash = crypto.createHash('md5').update(url).digest('hex').slice(0, 10);
-      images.set(url, `img-${hash}${ext}`);
-    }
+    if (url.startsWith('http')) images.add(url);
   }
 
   if (images.size === 0) return markdown;
 
-  console.log(`🖼️  Downloading ${images.size} image(s)...`);
+  console.log(`🖼️  Downloading ${images.size} image(s) to embed directly...`);
 
   // Download all images in parallel
   const downloads = [];
-  for (const [url, filename] of images) {
-    const localPath = path.join(imgDir, filename);
+  for (const url of images) {
     downloads.push(
-      downloadFile(url, localPath)
-        .then(() => {
-          console.log(`   ✓ ${filename}`);
-          return { url, filename, success: true };
+      downloadAsBase64(url)
+        .then((base64Uri) => {
+          console.log(`   ✓ Image downloaded and converted`);
+          return { url, base64Uri, success: true };
         })
         .catch((err) => {
-          console.log(`   ✗ ${filename} — ${err.message}`);
-          return { url, filename, success: false };
+          console.log(`   ✗ Failed to download image — ${err.message}`);
+          return { url, base64Uri: null, success: false };
         })
     );
   }
 
   const results = await Promise.all(downloads);
 
-  // Replace URLs in markdown with local paths
+  // Replace URLs in markdown with base64 URIs
   let updated = markdown;
-  for (const { url, filename, success } of results) {
-    if (success) {
+  for (const { url, base64Uri, success } of results) {
+    if (success && base64Uri) {
       // Escape special regex characters in the URL
       const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      updated = updated.replace(new RegExp(escaped, 'g'), `images/${filename}`);
+      updated = updated.replace(new RegExp(escaped, 'g'), base64Uri);
     }
   }
 
@@ -75,23 +62,24 @@ async function downloadAndReplaceImages(markdown, outputDir) {
 }
 
 /**
- * Download a file from a URL to a local path, following redirects.
+ * Download a file from a URL to a buffer and return as data URI
  */
-function downloadFile(url, dest) {
+function downloadAsBase64(url) {
   return new Promise((resolve, reject) => {
     const protocol = url.startsWith('https') ? https : http;
 
     const options = {
-        timeout: 30000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        },
-      };
+      timeout: 30000,
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+    };
 
     const request = protocol.get(url, options, (res) => {
       // Follow redirects
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        downloadFile(res.headers.location, dest).then(resolve).catch(reject);
+        downloadAsBase64(res.headers.location).then(resolve).catch(reject);
         return;
       }
 
@@ -100,16 +88,15 @@ function downloadFile(url, dest) {
         return;
       }
 
-      const file = fs.createWriteStream(dest);
-      res.pipe(file);
-      file.on('finish', () => {
-        file.close();
-        resolve();
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        const contentType = res.headers['content-type'] || 'image/png';
+        const base64 = buffer.toString('base64');
+        resolve(`data:${contentType};base64,${base64}`);
       });
-      file.on('error', (err) => {
-        fs.unlink(dest, () => {});
-        reject(err);
-      });
+      res.on('error', reject);
     });
 
     request.on('error', reject);
@@ -118,20 +105,6 @@ function downloadFile(url, dest) {
       reject(new Error('Timeout'));
     });
   });
-}
-
-/**
- * Guess file extension from URL (strip query params first)
- */
-function guessExtension(url) {
-  try {
-    const pathname = new URL(url).pathname;
-    const ext = path.extname(pathname).toLowerCase();
-    if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.avif'].includes(ext)) {
-      return ext;
-    }
-  } catch {}
-  return '.png'; // default fallback
 }
 
 module.exports = { downloadAndReplaceImages };

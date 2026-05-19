@@ -43,37 +43,54 @@ class NotionClient {
   }
 
   /**
-   * List pages from a Notion database, optionally filtered by status
+   * Fetch all blocks from a page, handling pagination.
+   * Returns flat list of top-level blocks.
    */
-  async getDatabasePages(databaseId, statusFilter) {
-    let filter;
-    if (statusFilter) {
-      // Try to find the status property name by querying the database schema
-      const db = await this.client.databases.retrieve({
-        database_id: databaseId,
+  async getAllBlocks(pageId) {
+    let blocks = [];
+    let cursor;
+    do {
+      const res = await this.client.blocks.children.list({
+        block_id: pageId,
+        start_cursor: cursor,
+        page_size: 100,
       });
-      const statusPropEntry = Object.entries(db.properties).find(
-        ([, v]) => v.type === 'status' || v.type === 'select'
-      );
+      blocks = blocks.concat(res.results);
+      cursor = res.has_more ? res.next_cursor : null;
+    } while (cursor);
+    return blocks;
+  }
 
-      if (statusPropEntry) {
-        const [propName, propDef] = statusPropEntry;
-        filter = {
-          property: propName,
-          [propDef.type]: { equals: statusFilter },
-        };
+  /**
+   * Extract image URLs from blocks.
+   * Returns a map of block ID → image URL.
+   * Handles both file (Notion-hosted) and external images.
+   */
+  async getImageUrls(pageId) {
+    const blocks = await this.getAllBlocks(pageId);
+    const imageMap = new Map();
+
+    for (const block of blocks) {
+      if (block.type !== 'image') continue;
+
+      const img = block.image;
+      let url = null;
+
+      if (img.type === 'file' && img.file?.url) {
+        url = img.file.url;
+      } else if (img.type === 'external' && img.external?.url) {
+        url = img.external.url;
+      } else if (img.type === 'file_upload' && img.file_upload?.url) {
+        url = img.file_upload.url;
       }
+
+      const caption =
+        img.caption?.map((c) => c.plain_text).join('') || '';
+
+      imageMap.set(block.id, { url, caption });
     }
 
-    const response = await this.client.databases.query({
-      database_id: databaseId,
-      filter,
-    });
-
-    return response.results.map((page) => ({
-      id: page.id,
-      ...this._extractMeta(page),
-    }));
+    return imageMap;
   }
 
   _extractMeta(page) {
