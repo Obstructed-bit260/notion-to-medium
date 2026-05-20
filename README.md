@@ -2,6 +2,8 @@
 
 Convert your Notion pages into Medium-ready HTML with one command. No Medium API token needed — uses a **copy-paste workflow** that preserves all formatting.
 
+<img width="1114" height="741" alt="image" src="https://github.com/user-attachments/assets/4e2d3537-da9e-4d51-8a8f-a782cd0e3cb5" />
+
 ## How It Works
 
 ```
